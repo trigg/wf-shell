@@ -808,7 +808,7 @@ void WayfireMenu::init(Gtk::HBox *container)
     menu_list.set_callback([=] () { update_popover_layout(); });
 
     button = std::make_unique<WayfireMenuButton>("panel");
-    button->add(main_image);
+    button->set_image(main_image);
     auto style = button->get_style_context();
     style->add_class("menu");
     style->add_class("flat");
@@ -858,7 +858,6 @@ void WayfireMenu::init(Gtk::HBox *container)
     app_info_monitor_changed_handler_id =
         g_signal_connect(app_info_monitor, "changed", G_CALLBACK(app_info_changed), this);
 
-    hbox.show();
     main_image.show();
     button->show();
 }

@@ -282,7 +282,7 @@ void WayfireVolume::init(Gtk::HBox *container)
 
     /* Setup layout */
     container->pack_start(*button, false, false);
-    button->add(main_image);
+    button->set_image(main_image);
     button->show_all();
     volume_scale.show_all();
 }

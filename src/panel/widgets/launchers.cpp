@@ -47,7 +47,7 @@ bool WfLauncherButton::initialize(std::string name, std::string icon, std::strin
         }
     }
 
-    button.add(m_icon);
+    button.set_image(m_icon);
     auto style = button.get_style_context();
     style->add_class("flat");
     style->add_class("launcher");

@@ -12,7 +12,7 @@ void WayfireNotificationCenter::init(Gtk::HBox *container)
     button->get_style_context()->add_class("notification-center");
 
     updateIcon();
-    button->add(icon);
+    button->set_image(icon);
     container->add(*button);
     button->show_all();
 

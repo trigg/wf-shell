@@ -27,9 +27,6 @@ class WayfireBatteryInfo : public WayfireWidget
     WfOption<bool> invert_opt{"panel/battery_icon_invert"};
 
     Gtk::Button button;
-    Gtk::Label label;
-    Gtk::HBox button_box;
-
     Gtk::Image icon;
 
     DBusConnection connection;

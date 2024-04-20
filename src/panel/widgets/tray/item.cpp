@@ -47,7 +47,7 @@ static Glib::RefPtr<Gdk::Pixbuf> extract_pixbuf(IconData && pixbuf_data)
 
 StatusNotifierItem::StatusNotifierItem(const Glib::ustring & service)
 {
-    add(icon);
+    set_image(icon);
 
     const auto & [name, path] = name_and_obj_path(service);
     dbus_name = name;

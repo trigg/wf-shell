@@ -126,7 +126,7 @@ class WayfireMenu : public WayfireWidget
     WayfireOutput *output;
 
     Gtk::Box flowbox_container;
-    Gtk::HBox hbox, hbox_bottom, scroll_pair;
+    Gtk::HBox hbox_bottom, scroll_pair;
     Gtk::VBox bottom_pad;
     Gtk::VBox popover_layout_box;
     Gtk::VBox category_box;

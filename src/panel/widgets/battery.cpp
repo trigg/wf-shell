@@ -119,10 +119,10 @@ void WayfireBatteryInfo::update_font()
 {
     if ((std::string)font_opt == "default")
     {
-        label.unset_font();
+        button.unset_font();
     } else
     {
-        label.override_font(Pango::FontDescription((std::string)font_opt));
+        button.override_font(Pango::FontDescription((std::string)font_opt));
     }
 }
 
@@ -159,18 +159,17 @@ void WayfireBatteryInfo::update_details()
 
     if (status_opt.value() == BATTERY_STATUS_PERCENT)
     {
-        label.set_text(percentage_string);
+        button.set_label(percentage_string);
     } else if (status_opt.value() == BATTERY_STATUS_FULL)
     {
-        label.set_text(description);
+        button.set_label(description);
     }
 
     if (status_opt.value() == BATTERY_STATUS_ICON)
     {
-        label.hide();
+        button.set_label("");
     } else
     {
-        label.show();
     }
 }
 
@@ -231,8 +230,6 @@ void WayfireBatteryInfo::init(Gtk::HBox *container)
         return;
     }
     button.get_style_context()->add_class("battery");
-
-    button_box.add(icon);
     button.get_style_context()->add_class("flat");
 
     status_opt.set_callback([=] () { update_details(); });
@@ -245,10 +242,9 @@ void WayfireBatteryInfo::init(Gtk::HBox *container)
     update_icon();
 
     container->pack_start(button, Gtk::PACK_SHRINK);
-    button_box.add(label);
-    button_box.set_spacing(5);
 
-    button.add(button_box);
+    button.set_image(icon);
+    button.set_always_show_image(true);
     button.property_scale_factor().signal_changed()
         .connect(sigc::mem_fun(this, &WayfireBatteryInfo::update_icon));
 
