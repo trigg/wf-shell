@@ -95,3 +95,37 @@ void set_image_icon(Gtk::Image& image, std::string icon_name, int size,
 
     set_image_pixbuf(image, pbuff, scale);
 }
+
+Gtk::IconSize get_icon_size(int size)
+{
+    if (size < 1)
+    {
+        size = 1;
+    }
+    auto icon_size = Gtk::IconSize::from_name("icon_size_"+size);
+    if (!icon_size)
+    {
+        icon_size = Gtk::IconSize::register_new("icon_size_"+size, size, size);
+    }
+    return icon_size;
+}
+
+void set_image_gicon(Gtk::Image& icon, std::string icon_name, int size)
+{
+    if (size < 1)
+    {
+        size = 1;
+    }
+    std::string absolute_path = "/";
+    if (!icon_name.compare(0, absolute_path.size(), absolute_path))
+    {
+        auto gfile = Gio::File::create_for_path(icon_name);
+        auto gicon_raw = g_file_icon_new(gfile->gobj());
+        auto gicon = Glib::wrap(gicon_raw);
+        icon.set((const Glib::RefPtr<const Gio::Icon>) gicon, get_icon_size(size));
+        return;
+    }
+    icon.set_from_icon_name(icon_name, get_icon_size(size));
+    icon.set_pixel_size(size);
+    return;
+}

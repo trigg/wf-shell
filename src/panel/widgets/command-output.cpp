@@ -138,6 +138,7 @@ WfCommandOutputButtons::CommandOutput::CommandOutput(const std::string & name,
 
 void WfCommandOutputButtons::init(Gtk::HBox *container)
 {
+    box.get_style_context()->add_class("wfs-command-output");
     container->pack_start(box, false, false);
     update_buttons();
     commands_list_opt.set_callback([=] { update_buttons(); });

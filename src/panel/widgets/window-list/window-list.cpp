@@ -184,6 +184,7 @@ void WayfireWindowList::init(Gtk::HBox *container)
         wl_registry_destroy(registry);
         return;
     }
+    scrolled_window.get_style_context()->add_class("wfs-window-list");
 
     wl_registry_destroy(registry);
     zwlr_foreign_toplevel_manager_v1_add_listener(manager,

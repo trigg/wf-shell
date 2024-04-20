@@ -2,7 +2,8 @@
 
 void WayfireStatusNotifier::init(Gtk::HBox *container)
 {
-    icons_hbox.set_spacing(5);
+    icons_hbox.get_style_context()->add_class("wfs-tray");
+    icons_hbox.set_spacing(5); /* TODO Remove */
     container->add(icons_hbox);
 }
 

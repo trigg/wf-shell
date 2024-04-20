@@ -247,6 +247,8 @@ void WayfireVolume::on_volume_value_changed()
 
 void WayfireVolume::init(Gtk::HBox *container)
 {
+    button->get_style_context()->add_class("wfs-volume");
+
     icon_size.set_callback([=] () { update_icon(); });
 
     /* Setup button */

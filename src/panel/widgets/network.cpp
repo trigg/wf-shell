@@ -398,10 +398,12 @@ void WayfireNetworkInfo::init(Gtk::HBox *container)
         enabled = false;
         return;
     }
+    auto style = button.get_style_context();
+    style->add_class("flat");
+    style->add_class("wfs-network");
 
     container->add(button);
     button.add(button_content);
-    button.get_style_context()->add_class("flat");
 
     button.signal_clicked().connect_notify(
         sigc::mem_fun(this, &WayfireNetworkInfo::on_click));

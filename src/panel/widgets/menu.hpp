@@ -8,6 +8,7 @@
 #include <gtkmm/image.h>
 #include <gtkmm/window.h>
 #include <gtkmm/flowbox.h>
+#include <gtkmm/eventbox.h>
 #include <gtkmm/scrolledwindow.h>
 #include <gtkmm/separator.h>
 #include <set>

@@ -146,6 +146,9 @@ class WayfirePanel::impl
 
     void init_layout()
     {
+        left_box.get_style_context()->add_class("wfs-panel-left");
+        center_box.get_style_context()->add_class("wfs-panel-center");
+        right_box.get_style_context()->add_class("wfs-panel-right");
         content_box.pack_start(left_box, false, false);
         content_box.pack_end(right_box, false, false);
         if (!center_box.get_children().empty())
