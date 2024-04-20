@@ -525,7 +525,7 @@ bool WayfireMenu::update_icon()
     {
         icon = menu_icon;
     }
-    set_image_gicon(main_image, icon, menu_size);
+    set_image_icon(main_image, icon, menu_size);
     return true;
 }
 
@@ -797,8 +797,7 @@ void WayfireMenu::init(Gtk::HBox *container)
     category_list["Hidden"] = std::make_unique<WfMenuCategory>("Other Desktops",
         "user-desktop");
 
-    hbox.get_style_context()->add_class("wfs-menu");
-    main_image.get_style_context()->add_class("wfs-menu-icon");
+    main_image.get_style_context()->add_class("menu-icon");
 
     output->toggle_menu_signal().connect(sigc::mem_fun(this, &WayfireMenu::toggle_menu));
 
@@ -810,6 +809,9 @@ void WayfireMenu::init(Gtk::HBox *container)
 
     button = std::make_unique<WayfireMenuButton>("panel");
     button->add(main_image);
+    auto style = button->get_style_context();
+    style->add_class("menu");
+    style->add_class("flat");
     button->get_popover()->set_constrain_to(Gtk::POPOVER_CONSTRAINT_NONE);
     button->get_popover()->signal_show().connect_notify(
         sigc::mem_fun(this, &WayfireMenu::on_popover_shown));
@@ -819,8 +821,7 @@ void WayfireMenu::init(Gtk::HBox *container)
         return;
     }
 
-    container->pack_start(hbox, false, false);
-    hbox.pack_start(*button, false, false);
+    container->pack_start(*button, false, false);
 
     logout_button.set_image_from_icon_name("system-shutdown", Gtk::ICON_SIZE_DIALOG);
     logout_button.signal_clicked().connect_notify(

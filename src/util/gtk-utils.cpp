@@ -77,16 +77,26 @@ void set_image_icon(Gtk::Image& image, std::string icon_name, int size,
 {
     int scale = ((options.user_scale == -1) ?
         image.get_scale_factor() : options.user_scale);
+
+    /* Create surface above necessary scale to allow zoom effects */
+    scale = scale * 2;
     int scaled_size = size * scale;
 
-    if (!icon_theme->lookup_icon(icon_name, scaled_size))
+    Glib::RefPtr<Gdk::Pixbuf> pbuff = {};
+    /* Get from theme if possible */
+    if (icon_theme->lookup_icon(icon_name, scaled_size))
     {
-        std::cerr << "Failed to load icon \"" << icon_name << "\"" << std::endl;
-        return;
+        pbuff = icon_theme->load_icon(icon_name, scaled_size, Gtk::ICON_LOOKUP_FORCE_SIZE)
+            ->scale_simple(scaled_size, scaled_size, Gdk::INTERP_BILINEAR);
+    }
+    /* Get from filesystem if necessary */
+    if (!pbuff){
+        pbuff = load_icon_pixbuf_safe(icon_name, scaled_size);
     }
 
-    auto pbuff = icon_theme->load_icon(icon_name, scaled_size, Gtk::ICON_LOOKUP_FORCE_SIZE)
-        ->scale_simple(scaled_size, scaled_size, Gdk::INTERP_BILINEAR);
+    if (!pbuff){
+        return;
+    }
 
     if (options.invert)
     {
@@ -94,38 +104,4 @@ void set_image_icon(Gtk::Image& image, std::string icon_name, int size,
     }
 
     set_image_pixbuf(image, pbuff, scale);
-}
-
-Gtk::IconSize get_icon_size(int size)
-{
-    if (size < 1)
-    {
-        size = 1;
-    }
-    auto icon_size = Gtk::IconSize::from_name("icon_size_"+size);
-    if (!icon_size)
-    {
-        icon_size = Gtk::IconSize::register_new("icon_size_"+size, size, size);
-    }
-    return icon_size;
-}
-
-void set_image_gicon(Gtk::Image& icon, std::string icon_name, int size)
-{
-    if (size < 1)
-    {
-        size = 1;
-    }
-    std::string absolute_path = "/";
-    if (!icon_name.compare(0, absolute_path.size(), absolute_path))
-    {
-        auto gfile = Gio::File::create_for_path(icon_name);
-        auto gicon_raw = g_file_icon_new(gfile->gobj());
-        auto gicon = Glib::wrap(gicon_raw);
-        icon.set((const Glib::RefPtr<const Gio::Icon>) gicon, get_icon_size(size));
-        return;
-    }
-    icon.set_from_icon_name(icon_name, get_icon_size(size));
-    icon.set_pixel_size(size);
-    return;
 }

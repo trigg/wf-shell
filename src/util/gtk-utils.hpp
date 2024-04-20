@@ -32,6 +32,5 @@ void invert_pixbuf(Glib::RefPtr<Gdk::Pixbuf>& pbuff);
 
 Gtk::IconSize get_icon_size(int size);
 
-void set_image_gicon(Gtk::Image& icon, std::string icon_name, int size);
 
 #endif /* end of include guard: WF_GTK_UTILS */

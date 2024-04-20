@@ -400,7 +400,7 @@ void WayfireNetworkInfo::init(Gtk::HBox *container)
     }
     auto style = button.get_style_context();
     style->add_class("flat");
-    style->add_class("wfs-network");
+    style->add_class("network");
 
     container->add(button);
     button.add(button_content);

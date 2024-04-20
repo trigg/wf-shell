@@ -4,7 +4,6 @@
 #include "../widget.hpp"
 #include <vector>
 #include <giomm/desktopappinfo.h>
-#include <gdkmm/pixbuf.h>
 #include <gtkmm/image.h>
 #include <gtkmm/hvbox.h>
 #include <gtkmm/button.h>

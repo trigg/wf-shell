@@ -11,6 +11,7 @@
 #include <sstream>
 
 #include <map>
+#include <filesystem>
 
 #include "panel.hpp"
 #include "../util/gtk-utils.hpp"
@@ -102,12 +103,12 @@ class WayfirePanel::impl
     };
 
     WfOption<int> minimal_panel_height{"panel/minimal_height"};
-    WfOption<std::string> css_path{"panel/css_path"};
 
     void create_window()
     {
         window = std::make_unique<WayfireAutohidingWindow>(output, "panel");
         window->set_size_request(1, minimal_panel_height);
+        window->get_style_context()->add_class("wf-panel");
         panel_layer.set_callback(set_panel_layer);
         set_panel_layer(); // initial setting
 
@@ -116,18 +117,6 @@ class WayfirePanel::impl
 
         bg_color.set_callback(on_window_color_updated);
         on_window_color_updated(); // set initial color
-
-        if ((std::string)css_path != "")
-        {
-            auto css = load_css_from_path(css_path);
-            if (css)
-            {
-                auto screen = Gdk::Screen::get_default();
-                auto style_context = Gtk::StyleContext::create();
-                style_context->add_provider_for_screen(
-                    screen, css, GTK_STYLE_PROVIDER_PRIORITY_USER);
-            }
-        }
 
         window->show_all();
         init_widgets();
@@ -146,9 +135,9 @@ class WayfirePanel::impl
 
     void init_layout()
     {
-        left_box.get_style_context()->add_class("wfs-panel-left");
-        center_box.get_style_context()->add_class("wfs-panel-center");
-        right_box.get_style_context()->add_class("wfs-panel-right");
+        left_box.get_style_context()->add_class("left");
+        center_box.get_style_context()->add_class("center");
+        right_box.get_style_context()->add_class("right");
         content_box.pack_start(left_box, false, false);
         content_box.pack_end(right_box, false, false);
         if (!center_box.get_children().empty())
@@ -365,6 +354,7 @@ void WayfirePanel::handle_config_reload()
 class WayfirePanelApp::impl
 {
   public:
+
     std::map<WayfireOutput*, std::unique_ptr<WayfirePanel>> panels;
 };
 
@@ -373,6 +363,53 @@ void WayfirePanelApp::on_config_reload()
     for (auto& p : priv->panels)
     {
         p.second->handle_config_reload();
+    }
+}
+
+void WayfirePanelApp::on_css_reload()
+{
+    clear_css_rules();
+    /* Add user directory */
+    std::string ext(".css");
+    for (auto &p : std::filesystem::directory_iterator(get_css_config_dir()))
+    {
+        if (p.path().extension() == ext)
+        {
+            add_css_file(p.path().string());
+        }
+    }
+    /* Add one user file */
+    auto custom_css_config = WfOption<std::string> {"panel/css_path"};
+    std::string custom_css = custom_css_config;
+    if (custom_css!=""){
+        add_css_file(custom_css);
+    }
+}
+
+void WayfirePanelApp::clear_css_rules()
+{
+    auto screen = Gdk::Screen::get_default();
+    auto style_context = Gtk::StyleContext::create();
+    for(auto css_provider : css_rules)
+    {
+        style_context->remove_provider_for_screen(screen, css_provider);
+    }
+    css_rules.clear();
+}
+
+void WayfirePanelApp::add_css_file(std::string file)
+{
+    auto screen = Gdk::Screen::get_default();
+    auto style_context = Gtk::StyleContext::create();
+    if (file != "")
+    {
+        auto css_provider = load_css_from_path(file);
+        if (css_provider)
+        {
+            style_context->add_provider_for_screen(
+                screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_USER);
+            css_rules.push_back(css_provider);
+        }
     }
 }
 

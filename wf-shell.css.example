@@ -1,39 +1,7 @@
-/* Examples of ways CSS can be used */
+/* Remove all spacing */
+/* see data/css/* for more examples */
 
-/* Sections of the panel can be selected */
-.wfs-panel-left,
-.wfs-panel-right,
-.wfs-panel-center {
-    background-color: black;
-}
-
-/* Individual plugins can be selected */
-.wfs-battery,
-.wfs-menu,
-.wfs-clock,
-.wfs-command-output,
-.wfs-launchers,
-.wfs-menu,
-.wfs-network,
-.wfs-spacing,
-.wfs-volume,
-.wfs-window-list {
-    font: monospace;
-}
-
-/* Plugin popovers can be selected */
-.wfs-menu-popover,
-.wfs-clock-popover {
-    font: monospace;
-}
-
-/* animations for hover are possible */
-.wfs-launchers-button image {
-    transition: 500ms linear;
-    -gtk-icon-transform: scale(0.8);
-}
-
-.wfs-launchers-button:hover image {
-    transition: 500ms linear;
-    -gtk-icon-transform: scale(1.2);
+.wf-panel button {
+    padding: 0px 0px 0px 0px;
+    border: none;
 }

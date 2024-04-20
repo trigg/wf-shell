@@ -230,7 +230,7 @@ void WayfireBatteryInfo::init(Gtk::HBox *container)
     {
         return;
     }
-    button.get_style_context()->add_class("wfs-battery");
+    button.get_style_context()->add_class("battery");
 
     button_box.add(icon);
     button.get_style_context()->add_class("flat");

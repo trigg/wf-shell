@@ -2,7 +2,6 @@
 #include <giomm/file.h>
 #include <glibmm/spawn.h>
 #include <glibmm/keyfile.h>
-#include <gdkmm/pixbuf.h>
 #include <gtkmm/icontheme.h>
 #include <gdk/gdkcairo.h>
 #include <cassert>
@@ -51,7 +50,7 @@ bool WfLauncherButton::initialize(std::string name, std::string icon, std::strin
     button.add(m_icon);
     auto style = button.get_style_context();
     style->add_class("flat");
-    style->add_class("wfs-launchers-button");
+    style->add_class("launcher");
 
     button.signal_clicked().connect([=] () { launch(); });
     icon_size.set_callback([=] () { update_icon(); });
@@ -64,9 +63,7 @@ bool WfLauncherButton::initialize(std::string name, std::string icon, std::strin
 
 void WfLauncherButton::update_icon()
 {
-    // Grab GIcon from desktop file
-    const Glib::RefPtr<const Gio::Icon> gicon = app_info->get_icon();
-    m_icon.set(gicon, get_icon_size(icon_size));
+    set_image_icon(m_icon, app_info->get_icon()->to_string(), icon_size);
 }
 
 void WfLauncherButton::launch()
@@ -151,7 +148,7 @@ launcher_container WayfireLaunchers::get_launchers_from_config()
 
 void WayfireLaunchers::init(Gtk::HBox *container)
 {
-    box.get_style_context()->add_class("wfs-launchers");
+    box.get_style_context()->add_class("launchers");
     container->pack_start(box, false, false);
     handle_config_reload();
 }
