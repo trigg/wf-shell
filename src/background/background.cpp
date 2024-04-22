@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <map>
+#include <string>
 
 #include <gtk-utils.hpp>
 #include <gtk-layer-shell.h>
@@ -20,146 +21,56 @@
 #include "background.hpp"
 
 
-void BackgroundDrawingArea::show_image(Glib::RefPtr<Gdk::Pixbuf> image,
-    double offset_x, double offset_y, double image_scale)
-{
-    if (!image)
-    {
-        to_image.source.clear();
-        from_image.source.clear();
-        return;
-    }
-
-    from_image = to_image;
-    to_image.source = Gdk::Cairo::create_surface_from_pixbuf(image,
-        this->get_scale_factor());
-
-    to_image.x     = offset_x / this->get_scale_factor();
-    to_image.y     = offset_y / this->get_scale_factor();
-    to_image.scale = image_scale;
-
-    fade = {
-        fade_duration,
-        wf::animation::smoothing::linear
-    };
-
-    fade.animate(from_image.source ? 0.0 : 1.0, 1.0);
-
-    Glib::signal_idle().connect_once([=] ()
-    {
-        this->queue_draw();
-    });
-}
-
-bool BackgroundDrawingArea::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
-{
-    if (!to_image.source)
-    {
-        return false;
-    }
-
-    if (fade.running())
-    {
-        queue_draw();
-    }
-
-    cr->save();
-    cr->scale(to_image.scale, to_image.scale);
-    cr->set_source(to_image.source, to_image.x, to_image.y);
-    cr->paint_with_alpha(fade);
-    cr->restore();
-    if (!from_image.source)
-    {
-        return false;
-    }
-
-    cr->save();
-    cr->scale(from_image.scale, from_image.scale);
-    cr->set_source(from_image.source, from_image.x, from_image.y);
-    cr->paint_with_alpha(1.0 - fade);
-    cr->restore();
-    return false;
-}
-
-BackgroundDrawingArea::BackgroundDrawingArea()
-{
-    fade.animate(0, 0);
-}
-
-Glib::RefPtr<Gdk::Pixbuf> WayfireBackground::create_from_file_safe(std::string path)
-{
-    Glib::RefPtr<Gdk::Pixbuf> pbuf;
-    int width  = window.get_allocated_width() * scale;
-    int height = window.get_allocated_height() * scale;
-
-    std::string fill_and_crop_string = "fill_and_crop";
-    std::string stretch_string = "stretch";
-
-    if (!stretch_string.compare(background_fill_mode))
-    {
-        try {
-            pbuf =
-                Gdk::Pixbuf::create_from_file(path, width, height,
-                    false);
-        } catch (...)
-        {
-            return Glib::RefPtr<Gdk::Pixbuf>();
-        }
-
-        offset_x    = offset_y = 0.0;
-        image_scale = 1.0;
-        return pbuf;
-    }
-
-    try {
-        pbuf =
-            Gdk::Pixbuf::create_from_file(path, width, height,
-                true);
-    } catch (...)
-    {
-        return Glib::RefPtr<Gdk::Pixbuf>();
-    }
-
-    if (!fill_and_crop_string.compare(background_fill_mode))
-    {
-        float screen_aspect_ratio = (float)width / height;
-        float image_aspect_ratio  = (float)pbuf->get_width() / pbuf->get_height();
-        bool should_fill_width    = (screen_aspect_ratio > image_aspect_ratio);
-        if (should_fill_width)
-        {
-            image_scale = (double)width / pbuf->get_width();
-            offset_y    = ((height / image_scale) - pbuf->get_height()) * 0.5;
-            offset_x    = 0;
-        } else
-        {
-            image_scale = (double)height / pbuf->get_height();
-            offset_x    = ((width / image_scale) - pbuf->get_width()) * 0.5;
-            offset_y    = 0;
-        }
-    } else
-    {
-        bool eq_width = (width == pbuf->get_width());
-        image_scale = 1.0;
-        offset_x    = eq_width ? 0 : (width - pbuf->get_width()) * 0.5;
-        offset_y    = eq_width ? (height - pbuf->get_height()) * 0.5 : 0;
-    }
-
-    return pbuf;
-}
-
 bool WayfireBackground::change_background()
 {
-    Glib::RefPtr<Gdk::Pixbuf> pbuf;
     std::string path;
 
-    if (!load_next_background(pbuf, path))
+    if (!load_next_background(path))
     {
         return false;
     }
-
-    std::cout << "Loaded " << path << std::endl;
-    drawing_area.show_image(pbuf, offset_x, offset_y, image_scale);
+    present_image(path);
     return true;
+}
+
+void WayfireBackground::present_image(std::string path){
+    if (path=="")
+    {
+        return;
+    }
+    if (css_rule)
+    {
+        window.get_style_context()->remove_provider(css_rule);
+    }
+
+    std::string image_url = "background: url(\""+path+"\") no-repeat center center;";
+    std::string fade="";
+    std::string fit = "background-size: auto";
+
+    if (!first_image){
+        fade = "transition: background-image "+ std::to_string(fade_duration)+"ms linear 1s ;";
+    }
+
+    std::string fit_mode = background_fill_mode;
+    if (fit_mode=="fill_and_crop")
+    {
+        fit = "background-size: cover;";
+    } else if (fit_mode=="preserve_aspect")
+    {
+        fit = "background-size: contain;";
+    } else if (fit_mode=="stretch")
+    {
+        fit = "background-size: 100% 100%;";
+    }
+
+    css_rule = Gtk::CssProvider::create();
+    std::string final_rule = ".wf-background { "+ image_url+ fade + fit + " }";
+    std::cout << final_rule << std::endl;
+    css_rule->load_from_data(final_rule);
+    window.get_style_context()->add_provider(css_rule, GTK_STYLE_PROVIDER_PRIORITY_USER);
+    current_path = path;
+    std::cout << "Loaded " << path << std::endl;
+    first_image=false;
 }
 
 bool WayfireBackground::load_images_from_dir(std::string path)
@@ -223,29 +134,19 @@ bool WayfireBackground::load_images_from_dir(std::string path)
     return true;
 }
 
-bool WayfireBackground::load_next_background(Glib::RefPtr<Gdk::Pixbuf> & pbuf,
-    std::string & path)
+bool WayfireBackground::load_next_background(std::string & path)
 {
-    while (!pbuf)
+    if (!images.size())
     {
-        if (!images.size())
-        {
-            std::cerr << "Failed to load background images from " <<
-                    (std::string)background_image << std::endl;
-            window.remove();
-            return false;
-        }
-
-        current_background = (current_background + 1) % images.size();
-
-        path = images[current_background];
-        pbuf = create_from_file_safe(path);
-
-        if (!pbuf)
-        {
-            images.erase(images.begin() + current_background);
-        }
+        std::cerr << "Failed to load background images from " <<
+                (std::string)background_image << std::endl;
+        window.remove();
+        return false;
     }
+
+    current_background = (current_background + 1) % images.size();
+
+    path = images[current_background];
 
     return true;
 }
@@ -255,40 +156,19 @@ void WayfireBackground::reset_background()
     images.clear();
     current_background = 0;
     change_bg_conn.disconnect();
-    scale = window.get_scale_factor();
 }
 
 void WayfireBackground::set_background()
 {
-    Glib::RefPtr<Gdk::Pixbuf> pbuf;
-
     reset_background();
-
     std::string path = background_image;
-    try {
-        if (load_images_from_dir(path) && images.size())
-        {
-            if (!load_next_background(pbuf, path))
-            {
-                throw std::exception();
-            }
-
-            std::cout << "Loaded " << path << std::endl;
-        } else
-        {
-            pbuf = create_from_file_safe(path);
-            if (!pbuf)
-            {
-                throw std::exception();
-            }
-        }
-    } catch (...)
-    {
-        std::cerr << "Failed to load background image(s) " << path << std::endl;
+    load_images_from_dir(path);
+    if (current_path == ""){
+        load_next_background(current_path);
     }
+    present_image(current_path);
 
     reset_cycle_timeout();
-    drawing_area.show_image(pbuf, offset_x, offset_y, image_scale);
 
     if (inhibited && output->output)
     {
@@ -323,8 +203,9 @@ void WayfireBackground::setup_window()
     gtk_layer_set_keyboard_mode(window.gobj(), GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND);
 
     gtk_layer_set_exclusive_zone(window.gobj(), -1);
-    window.add(drawing_area);
+    window.add(image);
     window.show_all();
+    window.get_style_context()->add_class("wf-background");
 
     auto reset_background = [=] () { set_background(); };
     auto reset_cycle = [=] () { reset_cycle_timeout(); };
@@ -333,8 +214,7 @@ void WayfireBackground::setup_window()
     background_fill_mode.set_callback(reset_background);
     background_cycle_timeout.set_callback(reset_cycle);
 
-    window.property_scale_factor().signal_changed().connect(
-        sigc::mem_fun(this, &WayfireBackground::set_background));
+    set_background();
 }
 
 WayfireBackground::WayfireBackground(WayfireShellApp *app, WayfireOutput *output)
