@@ -3,7 +3,6 @@
 #include <glibmm/refptr.h>
 #include <gtkmm/drawingarea.h>
 #include <gtkmm/window.h>
-#include <gtkmm/image.h>
 #include <gtkmm/cssprovider.h>
 #include <wf-shell-app.hpp>
 #include <wf-option-wrap.hpp>
@@ -16,7 +15,6 @@ class WayfireBackground
 
     std::vector<std::string> images;
     Gtk::Window window;
-    Gtk::Image image;
 
     Glib::RefPtr<Gtk::CssProvider> css_rule;
 
@@ -40,6 +38,7 @@ class WayfireBackground
     void reset_background();
     void set_background();
     void reset_cycle_timeout();
+    std::string sanitize(std::string path, std::string from, std::string to);
 
     void setup_window();
 

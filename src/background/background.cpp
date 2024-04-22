@@ -33,6 +33,16 @@ bool WayfireBackground::change_background()
     return true;
 }
 
+std::string WayfireBackground::sanitize(std::string path, std::string from, std::string to)
+{
+    size_t pos = 0;
+    while((pos = path.find(from, pos)) != std::string::npos) {
+        path.replace(pos, from.length(), to);
+        pos += to.length();
+    }
+    return path;
+}
+
 void WayfireBackground::present_image(std::string path){
     if (path=="")
     {
@@ -42,6 +52,10 @@ void WayfireBackground::present_image(std::string path){
     {
         window.get_style_context()->remove_provider(css_rule);
     }
+
+    path = sanitize(path, "(", "\\(");
+    path = sanitize(path, ")", "\\)");
+    path = sanitize(path, "\"", "\\\"");
 
     std::string image_url = "background: url(\""+path+"\") no-repeat center center;";
     std::string fade="";
@@ -203,7 +217,6 @@ void WayfireBackground::setup_window()
     gtk_layer_set_keyboard_mode(window.gobj(), GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND);
 
     gtk_layer_set_exclusive_zone(window.gobj(), -1);
-    window.add(image);
     window.show_all();
     window.get_style_context()->add_class("wf-background");
 
