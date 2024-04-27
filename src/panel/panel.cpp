@@ -261,13 +261,14 @@ class WayfirePanel::impl
         return result;
     }
 
-    void reload_widgets(std::string list, WidgetContainer& container,
+    bool reload_widgets(std::string list, WidgetContainer& container,
         Gtk::HBox& box)
     {
         const auto lock_sn_watcher = Watcher::Instance();
         const auto lock_notification_daemon = Daemon::Instance();
         container.clear();
         auto widgets = tokenize(list);
+        bool should_expand = false;
         for (auto widget_name : widgets)
         {
             auto widget = widget_from_name(widget_name);
@@ -275,10 +276,37 @@ class WayfirePanel::impl
             {
                 continue;
             }
+            if (widget_name == "window-list"){
+                should_expand = true;
+            }
 
             widget->widget_name = widget_name;
             widget->init(&box);
             container.push_back(std::move(widget));
+        }
+        return false;
+        return should_expand;
+    }
+
+    void reload_left(){
+        content_box.remove(left_box);
+        auto expand = reload_widgets((std::string)left_widgets_opt, left_widgets, left_box);
+        content_box.pack_start(left_box, expand, expand);
+    }
+
+    void reload_right(){
+        content_box.remove(right_box);
+        auto expand = reload_widgets((std::string)right_widgets_opt, right_widgets, right_box);
+        content_box.pack_end(right_box, expand, expand);
+    }
+
+    void reload_center(){
+        content_box.unset_center_widget();
+        auto expand = reload_widgets((std::string)center_widgets_opt, center_widgets, center_box);
+        if(center_box.get_children().empty())
+        {
+            content_box.set_center_widget(center_box);
+            center_box.set_hexpand(true);
         }
     }
 
@@ -289,27 +317,20 @@ class WayfirePanel::impl
     {
         left_widgets_opt.set_callback([=] ()
         {
-            reload_widgets((std::string)left_widgets_opt, left_widgets, left_box);
+            reload_left();
         });
         right_widgets_opt.set_callback([=] ()
         {
-            reload_widgets((std::string)right_widgets_opt, right_widgets, right_box);
+            reload_right();
         });
         center_widgets_opt.set_callback([=] ()
         {
-            reload_widgets((std::string)center_widgets_opt, center_widgets, center_box);
-            if (center_box.get_children().empty())
-            {
-                content_box.unset_center_widget();
-            } else
-            {
-                content_box.set_center_widget(center_box);
-            }
+            reload_center();
         });
 
-        reload_widgets((std::string)left_widgets_opt, left_widgets, left_box);
-        reload_widgets((std::string)right_widgets_opt, right_widgets, right_box);
-        reload_widgets((std::string)center_widgets_opt, center_widgets, center_box);
+        reload_left();
+        reload_right();
+        reload_center();
     }
 
   public:

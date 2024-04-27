@@ -80,8 +80,6 @@ class WayfireWindowList : public WayfireWidget
     void add_output(WayfireOutput *output);
 
   private:
-    void on_draw(const Cairo::RefPtr<Cairo::Context>&);
-
     void set_button_width(int width);
     int get_default_button_width();
     int get_target_button_width();

@@ -120,6 +120,7 @@ class WayfireToplevel::impl
         drag_gesture->signal_drag_end().connect_notify(
             sigc::mem_fun(this, &WayfireToplevel::impl::on_drag_end));
 
+        //button.show_all();
         this->window_list = window_list;
     }
 
