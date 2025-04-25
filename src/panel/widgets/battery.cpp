@@ -182,7 +182,6 @@ void WayfireBatteryInfo::setup_profiles(std::vector<std::map<Glib::ustring, Glib
             Glib::VariantBase value = profile.at("Profile");
             if (value.is_of_type(Glib::VariantType("s"))){
                 auto value_string = Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::ustring>>(value).get();
-                std::cout << value_string << std::endl;
                 auto item = Gio::MenuItem::create(value_string, "noactionyet");
 
                 item->set_action_and_target("actions.set_profile", Glib::Variant<Glib::ustring>::create(value_string));
@@ -228,6 +227,9 @@ bool WayfireBatteryInfo::setup_dbus()
         if (profiles && current_profile){
             setup_profiles(profiles.get());
             set_current_profile(current_profile.get());
+        } else
+        {
+            std::cout << "Unable to conect to Power Profiles. Continuing" << std::endl;    
         }
     }
 
@@ -266,8 +268,6 @@ void WayfireBatteryInfo::on_upower_properties_changed(
     const Gio::DBus::Proxy::MapChangedProperties& properties,
     const std::vector<Glib::ustring>& invalidated)
 {
-    std::cout << "Props changed" << std::endl;
-
     for (auto& prop : properties)
     {
         if (prop.first == ACTIVE_PROFILE)
@@ -280,7 +280,6 @@ void WayfireBatteryInfo::on_upower_properties_changed(
         {
             // I've been unable to find a way to change possible profiles on the fly, so cannot confirm this works at all.
             auto value = Glib::VariantBase::cast_dynamic<Glib::Variant<std::vector<std::map<Glib::ustring, Glib::VariantBase>>>> (prop.second);
-            std::cout << "Available profiles changed" << std::endl;
             setup_profiles(value.get());
         }
         // TODO Consider watching for "Performance Degraded" events too, but we currently have no way to output this additional information
