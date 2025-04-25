@@ -2,7 +2,10 @@
 #include <gtk-utils.hpp>
 #include <iostream>
 #include <algorithm>
+#include <glibmm.h>
 
+#define POWER_PROFILE_PATH "/org/freedesktop/UPower/PowerProfiles"
+#define POWER_PROFILE_NAME "org.freedesktop.UPower.PowerProfiles"
 #define UPOWER_NAME "org.freedesktop.UPower"
 #define DISPLAY_DEVICE "/org/freedesktop/UPower/devices/DisplayDevice"
 
@@ -13,6 +16,10 @@
 #define TIMETOFULL     "TimeToFull"
 #define TIMETOEMPTY    "TimeToEmpty"
 #define SHOULD_DISPLAY "IsPresent"
+
+#define DEGRADED       "PerformanceDegraded"
+#define PROFILES       "Profiles"
+#define ACTIVE_PROFILE "ActiveProfile"
 
 static std::string get_device_type_description(uint32_t type)
 {
@@ -165,6 +172,34 @@ void WayfireBatteryInfo::update_state()
                  "\n\tWayfireBatteryInfo::update_state()" << std::endl;
 }
 
+void WayfireBatteryInfo::setup_profiles(std::vector<std::map<Glib::ustring, Glib::VariantBase>> profiles)
+{
+    profiles_menu->remove_all();
+    for (auto profile : profiles)
+    {
+        if (profile.count("Profile") == 1)
+        {
+            Glib::VariantBase value = profile.at("Profile");
+            if (value.is_of_type(Glib::VariantType("s"))){
+                auto value_string = Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::ustring>>(value).get();
+                std::cout << value_string << std::endl;
+                auto item = Gio::MenuItem::create(value_string, "noactionyet");
+
+                item->set_action_and_target("actions.set_profile", Glib::Variant<Glib::ustring>::create(value_string));
+                profiles_menu->append_item(item);
+            }
+        }
+    }
+}
+
+/*
+    Change the selected radio button.
+ */
+void WayfireBatteryInfo::set_current_profile(Glib::ustring profile)
+{
+    state_action->set_state(Glib::Variant<Glib::ustring>::create(profile));
+}
+
 bool WayfireBatteryInfo::setup_dbus()
 {
     auto cancellable = Gio::Cancellable::create();
@@ -173,6 +208,27 @@ bool WayfireBatteryInfo::setup_dbus()
     {
         std::cerr << "Failed to connect to dbus" << std::endl;
         return false;
+    }
+
+    powerprofile_proxy = Gio::DBus::Proxy::create_sync(connection, POWER_PROFILE_NAME,
+        POWER_PROFILE_PATH,
+        POWER_PROFILE_NAME);
+    if (!powerprofile_proxy)
+    {
+        std::cout << "Unable to conect to Power Profiles. Continuing" << std::endl;   
+    } else
+    {
+        powerprofile_proxy->signal_properties_changed().connect(
+            sigc::mem_fun(*this, &WayfireBatteryInfo::on_upower_properties_changed) );
+        Glib::Variant<Glib::ustring> current_profile;
+        Glib::Variant<std::vector<std::map<Glib::ustring, Glib::VariantBase>>> profiles;
+        powerprofile_proxy->get_cached_property(current_profile, ACTIVE_PROFILE);
+        powerprofile_proxy->get_cached_property(profiles, PROFILES);
+
+        if (profiles && current_profile){
+            setup_profiles(profiles.get());
+            set_current_profile(current_profile.get());
+        }
     }
 
     upower_proxy = Gio::DBus::Proxy::create_sync(connection, UPOWER_NAME,
@@ -206,10 +262,39 @@ bool WayfireBatteryInfo::setup_dbus()
     return false;
 }
 
+void WayfireBatteryInfo::on_upower_properties_changed(
+    const Gio::DBus::Proxy::MapChangedProperties& properties,
+    const std::vector<Glib::ustring>& invalidated)
+{
+    std::cout << "Props changed" << std::endl;
+
+    for (auto& prop : properties)
+    {
+        if (prop.first == ACTIVE_PROFILE)
+        {
+            if (prop.second.is_of_type(Glib::VariantType("s"))){
+                auto value_string = Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::ustring>>(prop.second).get();
+                set_current_profile(value_string);
+            }
+        } else if (prop.first == PROFILES)
+        {
+            // I've been unable to find a way to change possible profiles on the fly, so cannot confirm this works at all.
+            auto value = Glib::VariantBase::cast_dynamic<Glib::Variant<std::vector<std::map<Glib::ustring, Glib::VariantBase>>>> (prop.second);
+            std::cout << "Available profiles changed" << std::endl;
+            setup_profiles(value.get());
+        }
+        // TODO Consider watching for "Performance Degraded" events too, but we currently have no way to output this additional information
+    }
+}
+
 // TODO: simplify config loading
 
 void WayfireBatteryInfo::init(Gtk::Box *container)
 {
+    profiles_menu = Gio::Menu::create();
+    state_action = Gio::SimpleAction::create_radio_string("set_profile", "");
+    settings_action = Gio::SimpleAction::create("settings");
+
     if (!setup_dbus())
     {
         return;
@@ -231,4 +316,98 @@ void WayfireBatteryInfo::init(Gtk::Box *container)
     button.set_child(button_box);
     button.property_scale_factor().signal_changed()
         .connect(sigc::mem_fun(*this, &WayfireBatteryInfo::update_icon));
+
+    menu = Gio::Menu::create();
+    auto item = Gio::MenuItem::create("Settings", "actions.settings");
+    menu->append_item(item);
+
+    menu->append_section("Profiles", profiles_menu);
+
+    auto actions = Gio::SimpleActionGroup::create();
+
+    state_action->signal_activate().connect([=] (Glib::VariantBase vb)
+    {
+        // User has requested a change of state. Don't change the UI choice, let the dbus roundtrip happen to be sure.
+        if (vb.is_of_type(Glib::VariantType("s")))
+        {
+            // Couldn't seem to make proxy send property back, so this will have to do
+            Glib::VariantContainerBase params = Glib::Variant<std::tuple<Glib::ustring,Glib::ustring,Glib::VariantBase>>::create({POWER_PROFILE_NAME, ACTIVE_PROFILE, vb});
+
+            connection->call_sync(
+                POWER_PROFILE_PATH,
+                "org.freedesktop.DBus.Properties",
+                "Set",
+                params,
+                NULL,
+                POWER_PROFILE_NAME, 
+                -1,
+                Gio::DBus::CallFlags::NONE,
+                {}
+            );
+        }
+    });
+
+    settings_action->signal_activate().connect([=] (Glib::VariantBase vb)
+    {
+        std::vector<std::string> battery_programs = {"mate-power-statistics", "xfce4-power-manager"};
+
+        Glib::RefPtr<Gio::DesktopAppInfo> app_info;
+        std::string value = battery_settings;
+        if (value == "")
+        {
+            // Auto guess
+            for(auto program : battery_programs)
+            {
+                if(executable_exists(program))
+                {
+                    auto keyfile = Glib::KeyFile::create();
+                    keyfile->set_string("Desktop Entry", "Type", "Application");
+                    keyfile->set_string("Desktop Entry", "Exec", "/bin/sh -c \"" + program + "\"");
+                    app_info = Gio::DesktopAppInfo::create_from_keyfile(keyfile);
+                    break;                   
+                }
+            }
+            
+        } else 
+        {
+            auto keyfile = Glib::KeyFile::create();
+            keyfile->set_string("Desktop Entry", "Type", "Application");
+            keyfile->set_string("Desktop Entry", "Exec", "/bin/sh -c \"" + value + "\"");
+            app_info = Gio::DesktopAppInfo::create_from_keyfile(keyfile);
+        }
+
+        if (app_info)
+        {
+            auto ctx = Gdk::Display::get_default()->get_app_launch_context();
+            app_info->launch(std::vector<Glib::RefPtr<Gio::File>>(), ctx);
+        }
+    });
+    actions->add_action(state_action);
+    actions->add_action(settings_action);
+
+    button.insert_action_group("actions", actions);
+
+    button.set_menu_model(menu);
+}
+
+bool WayfireBatteryInfo::executable_exists(std::string name)
+{
+    struct stat sb;
+    std::string delimiter = ":";
+    std::string path = std::string(getenv("PATH"));
+    size_t start_pos = 0, end_pos = 0;
+  
+    while ((end_pos = path.find(':', start_pos)) != std::string::npos)
+    {
+        std::string current_path =
+        path.substr(start_pos, end_pos - start_pos) + "/"+name;
+  
+        if ((stat(current_path.c_str(), &sb) == 0) && (sb.st_mode & S_IXOTH))
+        {
+            return true;
+        }
+  
+        start_pos = end_pos + 1;
+    }
+    return false;
 }

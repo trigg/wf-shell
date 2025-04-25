@@ -128,6 +128,11 @@
 		<_short>Battery Font</_short>
 		<default>default</default>
 	</option>
+	<option name="battery_settings" type="string">
+		<_short>Battery Settings</_short>
+		<_long>The command to run to show a Battery/Power settings window. Leave blank to attempt to automatically choose</_long>
+		<default></default>
+	</option>
 	</group>
 	<group>
 	<_short>Network</_short>
