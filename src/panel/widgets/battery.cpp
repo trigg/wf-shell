@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <glibmm.h>
+#include "../../util/gtk-utils.hpp"
 
 #define POWER_PROFILE_PATH "/org/freedesktop/UPower/PowerProfiles"
 #define POWER_PROFILE_NAME "org.freedesktop.UPower.PowerProfiles"
@@ -387,26 +388,4 @@ void WayfireBatteryInfo::init(Gtk::Box *container)
     button.insert_action_group("actions", actions);
 
     button.set_menu_model(menu);
-}
-
-bool WayfireBatteryInfo::executable_exists(std::string name)
-{
-    struct stat sb;
-    std::string delimiter = ":";
-    std::string path = std::string(getenv("PATH"));
-    size_t start_pos = 0, end_pos = 0;
-  
-    while ((end_pos = path.find(':', start_pos)) != std::string::npos)
-    {
-        std::string current_path =
-        path.substr(start_pos, end_pos - start_pos) + "/"+name;
-  
-        if ((stat(current_path.c_str(), &sb) == 0) && (sb.st_mode & S_IXOTH))
-        {
-            return true;
-        }
-  
-        start_pos = end_pos + 1;
-    }
-    return false;
 }

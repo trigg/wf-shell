@@ -252,6 +252,11 @@
 		<_short>Volume Scroll Sensitivity</_short>
 		<default>0.05</default>
 	</option>
+	<option name="volume_settings" type="string">
+		<_short>Volume Settings</_short>
+		<_long>The command to run to show a volume settings window. Leave blank to attempt to automatically choose</_long>
+		<default></default>
+	</option>
 	</group>
 	<group>
 	<_short>Notifications</_short>

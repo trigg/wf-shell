@@ -65,8 +65,6 @@ class WayfireBatteryInfo : public WayfireWidget
 
     void setup_profiles(std::vector<std::map<Glib::ustring, Glib::VariantBase>> profiles);
 
-    bool executable_exists(std::string name);
-
   public:
     virtual void init(Gtk::Box *container);
     virtual ~WayfireBatteryInfo() = default;

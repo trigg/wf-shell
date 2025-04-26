@@ -38,9 +38,14 @@ class WayfireVolume : public WayfireWidget
     WayfireVolumeScale volume_scale;
     Gtk::Button button;
     Gtk::Popover popover;
+    Gtk::PopoverMenu second_popover;
 
     WfOption<double> timeout{"panel/volume_display_timeout"};
     WfOption<double> scroll_sensitivity{"panel/volume_scroll_sensitivity"};
+    WfOption<std::string> volume_settings{"panel/volume_settings"};
+
+    std::shared_ptr<Gio::SimpleActionGroup> actions;
+    std::shared_ptr<Gio::SimpleAction> speaker_action, microphone_action;
 
     // void on_volume_scroll(GdkEventScroll *event);
     // void on_volume_button_press(GdkEventButton *event);
@@ -49,14 +54,18 @@ class WayfireVolume : public WayfireWidget
 
     GvcMixerControl *gvc_control;
     GvcMixerStream *gvc_stream = NULL;
+    GvcMixerStream *gvc_stream_mic = NULL;
     gdouble max_norm; // maximal volume for current stream
 
     gulong notify_volume_signal   = 0;
     gulong notify_is_muted_signal = 0;
+    gulong notify_is_mic_muted_signal = 0;
     gulong notify_default_sink_changed = 0;
+    gulong notify_default_source_changed = 0;
     sigc::connection popover_timeout;
     sigc::connection volume_changed_signal;
     void disconnect_gvc_stream_signals();
+    void disconnect_gvc_stream_signals_mic();
 
     enum set_volume_flags_t
     {
@@ -86,12 +95,14 @@ class WayfireVolume : public WayfireWidget
 
     /** Update the icon based on volume and muted state */
     void update_icon();
+    void update_menu();
 
     /** Called when the volume changed from outside of the widget */
     void on_volume_changed_external();
 
     /** Called when the default sink changes */
     void on_default_sink_changed();
+    void on_default_source_changed();
 
     /**
      * Check whether the popover should be auto-hidden, and if yes, start
