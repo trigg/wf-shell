@@ -236,6 +236,11 @@
 		<_short>Switch User Button Command</_short>
 		<default>dm-tool switch-to-greeter</default>
 	</option>
+	<option name="menu_right_click" type="string">
+		<_short>Right click command</_short>
+		<_long>The command to run when the menu is right clicked</_long>
+		<default></default>
+	</option>
 	</group>
 	<group>
 	<_short>Volume</_short>

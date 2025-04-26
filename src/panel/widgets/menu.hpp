@@ -172,6 +172,7 @@ class WayfireMenu : public WayfireWidget
     WfOption<int> menu_min_category_width{"panel/menu_min_category_width"};
     WfOption<int> menu_min_content_height{"panel/menu_min_content_height"};
     WfOption<bool> menu_show_categories{"panel/menu_show_categories"};
+    WfOption<std::string> menu_alternative_launch{"panel/menu_right_click"};
     void update_popover_layout();
     void update_category_width();
     void update_content_height();
