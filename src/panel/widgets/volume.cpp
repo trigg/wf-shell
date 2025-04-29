@@ -4,6 +4,7 @@
 #include "volume.hpp"
 #include "launchers.hpp"
 #include "gtk-utils.hpp"
+#include "../../util/gtk-utils.hpp"
 
 WayfireVolumeScale::WayfireVolumeScale()
 {
@@ -70,6 +71,14 @@ static VolumeLevel get_volume_level(pa_volume_t volume, pa_volume_t max)
     }
 
     return VOLUME_LEVEL_OOR;
+}
+
+void WayfireVolume::update_menu()
+{
+    bool muted_mic = (gvc_stream_mic && gvc_mixer_stream_get_is_muted(gvc_stream_mic));
+    bool muted_speaker = (gvc_stream && gvc_mixer_stream_get_is_muted(gvc_stream));
+    microphone_action->set_state(Glib::Variant<bool>::create(muted_mic));
+    speaker_action->set_state(Glib::Variant<bool>::create(muted_speaker));
 }
 
 void WayfireVolume::update_icon()
@@ -154,6 +163,14 @@ static void notify_is_muted(GvcMixerControl *gvc_control,
 {
     WayfireVolume *wf_volume = (WayfireVolume*)user_data;
     wf_volume->update_icon();
+    wf_volume->update_menu();
+}
+
+static void notify_is_mic_muted(GvcMixerControl *gvc_control,
+    guint id, gpointer user_data)
+{
+    WayfireVolume *wf_volume = (WayfireVolume*)user_data;
+    wf_volume->update_menu();
 }
 
 void WayfireVolume::disconnect_gvc_stream_signals()
@@ -171,6 +188,15 @@ void WayfireVolume::disconnect_gvc_stream_signals()
     }
 
     notify_is_muted_signal = 0;
+}
+
+void WayfireVolume::disconnect_gvc_stream_signals_mic()
+{
+    if (notify_is_mic_muted_signal)
+    {
+        g_signal_handler_disconnect(gvc_stream_mic, notify_is_mic_muted_signal);
+    }
+    notify_is_mic_muted_signal = 0;
 }
 
 void WayfireVolume::on_default_sink_changed()
@@ -198,6 +224,23 @@ void WayfireVolume::on_default_sink_changed()
     /* Finally, update the displayed volume. However, do not show the
      * popup */
     set_volume(gvc_mixer_stream_get_volume(gvc_stream), VOLUME_FLAG_NO_ACTION);
+    update_menu();
+}
+
+void WayfireVolume::on_default_source_changed()
+{
+    gvc_stream_mic = gvc_mixer_control_get_default_source(gvc_control);
+    if (!gvc_stream_mic)
+    {
+        printf("GVC: Failed to get default source\n");
+        return;
+    }
+
+    disconnect_gvc_stream_signals_mic();
+    notify_is_mic_muted_signal = g_signal_connect(gvc_stream_mic, "notify::is-muted",
+        G_CALLBACK(notify_is_mic_muted), this);
+
+    update_menu();
 }
 
 static void default_sink_changed(GvcMixerControl *gvc_control,
@@ -205,6 +248,13 @@ static void default_sink_changed(GvcMixerControl *gvc_control,
 {
     WayfireVolume *wf_volume = (WayfireVolume*)user_data;
     wf_volume->on_default_sink_changed();
+}
+
+static void default_source_changed(GvcMixerControl *gvc_control,
+    guint id, gpointer user_data)
+{
+    WayfireVolume *wf_volume = (WayfireVolume*)user_data;
+    wf_volume->on_default_source_changed();    
 }
 
 void WayfireVolume::on_volume_value_changed()
@@ -231,6 +281,7 @@ void WayfireVolume::init(Gtk::Box *container)
     style->add_class("flat");
 
     gtk_widget_set_parent(GTK_WIDGET(popover.gobj()), GTK_WIDGET(button.gobj()));
+    gtk_widget_set_parent(GTK_WIDGET(second_popover.gobj()), GTK_WIDGET(button.gobj()));
 
     auto scroll_gesture = Gtk::EventControllerScroll::create();
     scroll_gesture->signal_scroll().connect([=] (double dx, double dy)
@@ -251,7 +302,22 @@ void WayfireVolume::init(Gtk::Box *container)
         return true;
     }, true);
     scroll_gesture->set_flags(Gtk::EventControllerScroll::Flags::VERTICAL);
+
+    auto click_gesture = Gtk::GestureClick::create();
+    click_gesture->set_button(3); // Only use right-click for this callback
+    click_gesture->signal_pressed().connect([=] (int count, double x, double y)
+    {
+        if (!second_popover.is_visible())
+        {
+            second_popover.popup();
+        } else
+        {
+            second_popover.popdown();
+        }
+    });
+
     button.add_controller(scroll_gesture);
+    button.add_controller(click_gesture);
 
     /* Setup popover */
     popover.set_autohide(false);
@@ -271,7 +337,92 @@ void WayfireVolume::init(Gtk::Box *container)
     gvc_control = gvc_mixer_control_new("Wayfire Volume Control");
     notify_default_sink_changed = g_signal_connect(gvc_control,
         "default-sink-changed", G_CALLBACK(default_sink_changed), this);
+    notify_default_source_changed = g_signal_connect(gvc_control,
+        "default-source-changed", G_CALLBACK(default_source_changed), this);
     gvc_mixer_control_open(gvc_control);
+
+    /* Setup Menu */
+    auto menu = Gio::Menu::create();
+    auto menu_item_settings = Gio::MenuItem::create("Settings", "action.settings");
+    auto menu_item_toggle_volume = Gio::MenuItem::create("Mute Speaker", "action.togglespeaker");
+    auto menu_item_toggle_mic = Gio::MenuItem::create("Mute Microphone", "action.togglemicrophone");
+
+    menu->append_item(menu_item_toggle_volume);
+    menu->append_item(menu_item_toggle_mic);
+    menu->append_item(menu_item_settings);
+
+    second_popover.set_menu_model(menu);
+
+    /* Menu Actions*/
+    actions = Gio::SimpleActionGroup::create();
+
+    auto settings_action = Gio::SimpleAction::create("settings");
+    speaker_action = Gio::SimpleAction::create_bool("togglespeaker", false);
+    microphone_action = Gio::SimpleAction::create_bool("togglemicrophone", false);
+
+    settings_action->signal_activate().connect([=] (Glib::VariantBase vb)
+    {
+        std::vector<std::string> volume_programs = {"pavucontrol", "mate-volume-control"};
+
+        Glib::RefPtr<Gio::DesktopAppInfo> app_info;
+        std::string value = volume_settings;
+        if (value == "")
+        {
+            // Auto guess
+            for(auto program : volume_programs)
+            {
+                if(executable_exists(program))
+                {
+                    auto keyfile = Glib::KeyFile::create();
+                    keyfile->set_string("Desktop Entry", "Type", "Application");
+                    keyfile->set_string("Desktop Entry", "Exec", "/bin/sh -c \"" + program + "\"");
+                    app_info = Gio::DesktopAppInfo::create_from_keyfile(keyfile);
+                    break;                   
+                }
+            }
+            
+        } else 
+        {
+            auto keyfile = Glib::KeyFile::create();
+            keyfile->set_string("Desktop Entry", "Type", "Application");
+            keyfile->set_string("Desktop Entry", "Exec", "/bin/sh -c \"" + value + "\"");
+            app_info = Gio::DesktopAppInfo::create_from_keyfile(keyfile);
+        }
+
+        if (app_info)
+        {
+            auto ctx = Gdk::Display::get_default()->get_app_launch_context();
+            app_info->launch(std::vector<Glib::RefPtr<Gio::File>>(), ctx);
+        }
+    });
+
+    speaker_action->signal_activate().connect([=] (Glib::VariantBase vb)
+    {
+        if (gvc_stream)
+        {        
+            bool muted = !gvc_mixer_stream_get_is_muted(gvc_stream);
+            gvc_mixer_stream_change_is_muted(gvc_stream, muted);
+            gvc_mixer_stream_push_volume(gvc_stream);
+
+        }    
+    });
+
+    microphone_action->signal_activate().connect([=] (Glib::VariantBase vb)
+    {
+        if (gvc_stream_mic)
+        {
+            bool muted = !(gvc_stream_mic && gvc_mixer_stream_get_is_muted(gvc_stream_mic));
+            gvc_mixer_stream_change_is_muted(gvc_stream_mic, muted);
+            gvc_mixer_stream_push_volume(gvc_stream_mic);
+
+        }
+    });
+
+    actions->add_action(speaker_action);
+    actions->add_action(microphone_action);
+    actions->add_action(settings_action);
+
+    button.insert_action_group("action", actions);
 
     /* Setup layout */
     container->append(button);
@@ -286,6 +437,10 @@ WayfireVolume::~WayfireVolume()
     if (notify_default_sink_changed)
     {
         g_signal_handler_disconnect(gvc_control, notify_default_sink_changed);
+    }
+    if (notify_default_source_changed)
+    {
+        g_signal_handler_disconnect(gvc_control, notify_default_source_changed);
     }
 
     gvc_mixer_control_close(gvc_control);

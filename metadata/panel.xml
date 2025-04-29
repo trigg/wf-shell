@@ -128,6 +128,11 @@
 		<_short>Battery Font</_short>
 		<default>default</default>
 	</option>
+	<option name="battery_settings" type="string">
+		<_short>Battery Settings</_short>
+		<_long>The command to run to show a Battery/Power settings window. Leave blank to attempt to automatically choose</_long>
+		<default></default>
+	</option>
 	</group>
 	<group>
 	<_short>Network</_short>
@@ -231,6 +236,11 @@
 		<_short>Switch User Button Command</_short>
 		<default>dm-tool switch-to-greeter</default>
 	</option>
+	<option name="menu_right_click" type="string">
+		<_short>Right click command</_short>
+		<_long>The command to run when the menu is right clicked</_long>
+		<default></default>
+	</option>
 	</group>
 	<group>
 	<_short>Volume</_short>
@@ -246,6 +256,11 @@
 	<option name="volume_scroll_sensitivity" type="double">
 		<_short>Volume Scroll Sensitivity</_short>
 		<default>0.05</default>
+	</option>
+	<option name="volume_settings" type="string">
+		<_short>Volume Settings</_short>
+		<_long>The command to run to show a volume settings window. Leave blank to attempt to automatically choose</_long>
+		<default></default>
 	</option>
 	</group>
 	<group>

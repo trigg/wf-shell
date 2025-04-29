@@ -22,4 +22,6 @@ void invert_pixbuf(Glib::RefPtr<Gdk::Pixbuf>& pbuff);
 
 void image_set_icon(Gtk::Image *image, std::string path);
 
+bool executable_exists(std::string name);
+
 #endif /* end of include guard: WF_GTK_UTILS */

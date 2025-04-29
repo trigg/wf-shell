@@ -840,6 +840,26 @@ void WayfireMenu::init(Gtk::Box *container)
         return;
     }
 
+    auto click_gesture = Gtk::GestureClick::create();
+    click_gesture->set_button(3); // Only use right-click for this callback
+    click_gesture->signal_pressed().connect([=] (int count, double x, double y)
+    {
+        std::string value = menu_alternative_launch;
+        if (value != "")
+        {
+            auto keyfile = Glib::KeyFile::create();
+            keyfile->set_string("Desktop Entry", "Type", "Application");
+            keyfile->set_string("Desktop Entry", "Exec", "/bin/sh -c \"" + value + "\"");
+            AppInfo app_info = Gio::DesktopAppInfo::create_from_keyfile(keyfile);
+            if (app_info)
+            {
+                auto ctx = Gdk::Display::get_default()->get_app_launch_context();
+                app_info->launch(std::vector<Glib::RefPtr<Gio::File>>(), ctx);
+            }
+        }
+    });
+    button->add_controller(click_gesture);
+
     button->property_scale_factor().signal_changed().connect(
         [=] () {update_icon(); });
 

@@ -72,3 +72,27 @@ void image_set_icon(Gtk::Image *image, std::string path)
         image->set_from_icon_name(path);
     }
 }
+
+
+/* Check if an executable of this name exists on path */
+bool executable_exists(std::string name)
+{
+    struct stat sb;
+    std::string delimiter = ":";
+    std::string path = std::string(getenv("PATH"));
+    size_t start_pos = 0, end_pos = 0;
+  
+    while ((end_pos = path.find(':', start_pos)) != std::string::npos)
+    {
+        std::string current_path =
+        path.substr(start_pos, end_pos - start_pos) + "/"+name;
+  
+        if ((stat(current_path.c_str(), &sb) == 0) && (sb.st_mode & S_IXOTH))
+        {
+            return true;
+        }
+  
+        start_pos = end_pos + 1;
+    }
+    return false;
+}
