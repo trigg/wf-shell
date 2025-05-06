@@ -120,9 +120,14 @@ gboolean BackgroundDrawingArea::update_animation(Glib::RefPtr<Gdk::FrameClock> f
 
 bool BackgroundDrawingArea::do_draw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int height)
 {
-    if (!to_image)
+    if (!to_image || !to_image->source)
     {
         return false;
+    }
+
+    if (fade.running())
+    {
+        queue_draw();
     }
 
     auto to_adjustments = to_image->generate_adjustments(width, height);
