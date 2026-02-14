@@ -16,5 +16,6 @@ class WayfireLockerTimedRevealer : public Gtk::Revealer
     WfOption<int> hide_animation{"locker/hide_anim"};
     WfOption<int> hide_animation_duration{"locker/hide_anim_dur"};
 
+    sigc::connection activity_timeout;
     virtual void activity(); /* Allow plugins to have their own logic if more intricate */
 };
